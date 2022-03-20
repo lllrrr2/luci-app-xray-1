@@ -300,10 +300,6 @@ kill_all() {
 stop() {
 	/usr/bin/${NAME}-rules -f
 	kill_all /usr/bin/${NAME}
-	if [ -f /var/run/xray-plugin ]; then
-		kill_all $(sort -u /var/run/xray-plugin)
-		rm -f /var/run/xray-plugin
-	fi
 	rm -f $DNSMASQDIR/xray.conf $DNSMASQDIR/xray-servers.conf 2>/dev/null
 	del_cron
 }
@@ -323,6 +319,13 @@ del_cron() {
 watchdog() {
 	command -v xray >/dev/null 2>&1 || return 1
 	has_valid_server $(uci_get_by_type general server) && uci_bool_by_type 'transparent_proxy' 'enable' || return 1
+
+	pgrep -f "/var/etc/$NAME.json" >/dev/null 2>&1 || {
+		echo "[${LOGTIME}] Problem decteted, restarting ${NAME}..."
+		stop >/dev/null 2>&1
+		start >/dev/null 2>&1
+		return 0
+	}
 
 	cat_connect() {
 		target="$1"
